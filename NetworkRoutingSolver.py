@@ -19,80 +19,80 @@ class NetworkRoutingSolver:
         self.network = network
 
     def getShortestPath(self, destIndex):
-        for node in self.network.getNodes():
-            if node.node_id == destIndex:
-                self.dest = node
-                break
         # TODO: RETURN THE SHORTEST PATH FOR destIndex
         #       INSTEAD OF THE DUMMY SET OF EDGES BELOW
         #       IT'S JUST AN EXAMPLE OF THE FORMAT YOU'LL 
         #       NEED TO USE
-        '''
-                path_edges = []
-                total_length = 0
-                node = self.network.nodes[self.source]
-                edges_left = 3
-                while edges_left > 0:
-                    edge = node.neighbors[2]
-                    path_edges.append((edge.src.loc, edge.dest.loc, '{:.0f}'.format(edge.length)))
-                    total_length += edge.length
-                    node = edge.dest
-                    edges_left -= 1
-                return {'cost': total_length, 'path': path_edges}
-        '''
         pathEdges = []
         totalLength = 0
-        currentNode = self.dest
-        while self.prev[currentNode] is not None:
-            backPath = self.prev[currentNode]
-            totalLength += backPath.length
-            pathEdges.append(backPath)
-            currentNode = backPath.src  # maybe source?
-        if currentNode != self.source:
-            return {'cost': math.inf, 'path': pathEdges}
-        else:
-            return {'cost': totalLength, 'path': pathEdges}
+        currentNode = destIndex
+        while currentNode != self.source and self.prev[currentNode] is not None:
+            edge = self.findEdge(currentNode, self.prev[currentNode])
+            assert(edge is not None)
+            totalLength += edge.length
+            pathEdges.append(edge)
+            currentNode = self.prev[currentNode]
+
+        return {'cost': totalLength, 'path': pathEdges}
+
+        """
+        path_edges = []
+        total_length = 0
+        node = self.network.nodes[self.source]
+        edges_left = 3
+        while edges_left > 0:
+            edge = node.neighbors[2]
+            path_edges.append((edge.src.loc, edge.dest.loc, '{:.0f}'.format(edge.length)))
+            total_length += edge.length
+            node = edge.dest
+            edges_left -= 1
+        return {'cost': total_length, 'path': path_edges}
+        """
 
     def computeShortestPaths(self, srcIndex, use_heap=False):
         self.source = srcIndex
         t1 = time.time()
-        self.dist = {}
-        self.prev = {}
+        self.dist = []
+        self.prev = []
         # TODO: RUN DIJKSTRA'S TO DETERMINE SHORTEST PATHS.
         #       ALSO, STORE THE RESULTS FOR THE SUBSEQUENT
         #       CALL TO getShortestPath(dest_index)
         if use_heap:
             pass  # TODO use heap
         else:
-            for u in self.network.getNodes():
-                self.dist[u] = math.inf
-                self.prev[u] = None
-                if u.node_id == srcIndex:
-                    self.dist[u] = 0
+            for i in self.network.getNodes():
+                self.dist.append(math.inf)
+                self.prev.append(None)
 
-            H = self.dist.copy()
+            self.dist[srcIndex] = 0
+
+            H = {}
+            for i in range(len(self.dist)):
+                H[i] = self.dist[i]
+
             while len(H) > 0:
                 u = self.deleteMin(H)
-                for v in u.neighbors:  # v is each edge coming from u
-                    if self.dist[v.dest] > self.dist[u] + v.length:
-                        self.dist[v.dest] = self.dist[u] + v.length
-                        self.prev[v.dest] = v
-                        # H[v] = self.dist[u] + v.length
+                for e in self.network.getNodes()[u].neighbors:
+                    if self.dist[e.dest.node_id] > self.dist[e.src.node_id] + e.length:
+                        self.dist[e.dest.node_id] = self.dist[e.src.node_id] + e.length
+                        self.prev[e.dest.node_id] = e.src.node_id
+                        H[e.dest.node_id] = self.dist[e.dest.node_id]
 
         t2 = time.time()
         return t2 - t1
 
     def deleteMin(self, d):
-        smallest = None
-        smallestNode = None
-        for node in d:
-            if smallest is None:
-                smallest = d[node]
-                smallestNode = node
+        smallestIn = None
+        for i in d:
+            if smallestIn is None:
+                smallestIn = i
+            if d[i] < d[smallestIn]:
+                smallestIn = i
+        del d[smallestIn]
+        return smallestIn
 
-            elif self.dist[node] < smallest:
-                smallest = self.dist[node]
-                smallestNode = node
-
-        d.pop(smallestNode)
-        return smallestNode
+    def findEdge(self, dest, src):
+        for e in self.network.getNodes()[src].neighbors:
+            if e.dest.node_id == dest:
+                return e
+        return None
